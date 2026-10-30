@@ -1,0 +1,28 @@
+[project]
+name = "mouse-fibrosis-preprocessing-env"
+version = "0.1.0"
+description = "Environment for converting, annotating, and preprocessing single-cell profiles"
+requires-python = "==3.11.*"
+dependencies = [
+    "jupyter==1.0.0",
+    "jupyterlab",
+    "ipykernel",
+    "tifffile",
+    "pandas",
+    "scipy",
+    "numpy",
+    "scikit-learn",
+    "seaborn",
+    "umap-learn",
+    "matplotlib",
+    "upsetplot",
+    "papermill",
+    "tabulate",
+    "pre-commit>=4.0,<5",
+    "pycytominer>=1.7.1",
+    "cytotable>=1.2.6",
+    "cosmicqc>=1.1.2",
+]
+
+[tool.uv]
+package = false
