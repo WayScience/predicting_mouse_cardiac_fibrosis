@@ -1,0 +1,27 @@
+[project]
+name = "mouse-fibrosis-machine-learning"
+version = "0.1.0"
+description = "Environment for training and evaluating machine learning models"
+requires-python = "==3.10.*"
+dependencies = [
+    "jupyter==1.0.0",
+    "jupyterlab",
+    "ipykernel",
+    "opencv-python",
+    "tifffile",
+    "pandas",
+    "scipy",
+    "numpy>=1.25,<2",
+    "scikit-learn==1.3.2",
+    "seaborn",
+    "umap-learn",
+    "matplotlib",
+    "pyarrow",
+    "pre-commit>=4.0,<5",
+    "pycytominer",
+    "polars",
+    "copairs",
+]
+
+[tool.uv]
+package = false
