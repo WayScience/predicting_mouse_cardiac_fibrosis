@@ -341,7 +341,7 @@ def summarize_missing_channels(loaddata_df: pd.DataFrame, channel_map: Dict[str,
     # Find which channels are missing to avoid downstream errors
     missing_df["Missing_Channels"] = missing_df[filename_columns].apply(
         lambda row: ", ".join(
-            column.removeprefix("FileName_")
+            column[len("FileName_") :]
             for column, value in row.items()
             if pd.isna(value)
         ),
@@ -366,6 +366,7 @@ def add_illumination_columns_to_loaddata_csvs(
     - Illumination prefix is assumed to be "Illum"
     - Image prefix is assumed to be "Orig"
     - Output CSVs are always written to output_dir (no in-place overwriting)
+    - CSVs with any plate missing illumination files are not written
 
     Parameters
     ----------
@@ -386,6 +387,13 @@ def add_illumination_columns_to_loaddata_csvs(
     -------
     Dict[Path, pd.DataFrame]
         Mapping of input CSV paths to updated DataFrames.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the illumination directory does not exist, or if any plate is missing
+        illumination files (raised after all CSVs are checked, listing every
+        missing file).
     """
     # Resolve path and set up output dir if not already created
     illum_directory = Path(illum_directory).expanduser().resolve()
@@ -409,6 +417,7 @@ def add_illumination_columns_to_loaddata_csvs(
     for csv_path in loaddata_csv_paths:
         csv_path = Path(csv_path).expanduser().resolve()
         df = pd.read_csv(csv_path)
+        n_missing_before = len(missing_files)
 
         # Find Metadata_Plate to use for saving updated LoadData CSV
         if "Metadata_Plate" not in df.columns:
@@ -442,6 +451,11 @@ def add_illumination_columns_to_loaddata_csvs(
                     df.loc[plate_mask, fname_col] = pd.NA
                     df.loc[plate_mask, fpath_col] = pd.NA
 
+        # Skip saving this LoadData CSV if any plate is missing illum functions
+        # to avoid running CellProfiler with blank illumination paths
+        if len(missing_files) > n_missing_before:
+            continue
+
         # Append updated loaddata csvs to list
         updated_loaddata_dfs[csv_path] = df
 
@@ -449,10 +463,15 @@ def add_illumination_columns_to_loaddata_csvs(
         out_path = output_dir / csv_path.name.replace("loaddata_", "loaddata_with_illum_")
         df.to_csv(out_path, index=False)
 
-    # Report missing illum functions
+    # Raise an error listing all missing illum functions so extraction does not run
     if missing_files:
-        print("⚠️ Missing illumination files:")
-        for csv_path, plate, ch, path in missing_files:
-            print(f"{csv_path}: plate={plate}, channel={ch}, expected={path}")
+        missing_report = "\n".join(
+            f"{csv_path}: plate={plate}, channel={ch}, expected={path}"
+            for csv_path, plate, ch, path in missing_files
+        )
+        raise FileNotFoundError(
+            "Missing illumination files (LoadData CSVs for these plates were not saved):\n"
+            f"{missing_report}"
+        )
 
     return updated_loaddata_dfs
