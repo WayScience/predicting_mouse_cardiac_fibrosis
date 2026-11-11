@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# # Generate well-level bulk profiles profiles
+# # Generate well-level bulk profiles
 # 
-# NOTE: We are normalizing the bulk-profile plates to the negative controls as the "standard".
+# NOTE: We are normalizing the bulk profiles to the vehicle-treated wells (negative controls) as the "standard".
 
 # ## Import libraries
 
@@ -13,8 +13,8 @@
 import pathlib
 
 import pandas as pd
-
-from pycytominer import aggregate, annotate, normalize, feature_select
+from pycytominer import aggregate, annotate, feature_select, normalize
+from pycytominer.cyto_utils import output
 
 
 # ## Set paths and variables
@@ -23,7 +23,7 @@ from pycytominer import aggregate, annotate, normalize, feature_select
 
 
 # Set the plate to process
-plate_id = "CARD-CelIns-CX7_260803130001"
+plate_id = "CARD-CelIns-CX7_261022150001"
 
 # Directory with QC-labeled profiles
 qc_labeled_dir = pathlib.Path("./data/qc_labeled_profiles/").resolve(strict=True)
@@ -32,22 +32,22 @@ qc_labeled_dir = pathlib.Path("./data/qc_labeled_profiles/").resolve(strict=True
 output_dir = pathlib.Path("./data/bulk_profiles/")
 output_dir.mkdir(parents=True, exist_ok=True)
 
-# Path to the platemap for the validation plate
+# Path to the platemap for the pilot plate
 platemap_path = pathlib.Path(
-    "../metadata/platemaps/platemap_validation.csv"
+    "../metadata/platemaps/pilot_platemap.csv"
 ).resolve(strict=True)
 
-# Path to the QC-labeled profile for the validation plate
+# Path to the QC-labeled profile for the pilot plate
 profile_path = (qc_labeled_dir / f"{plate_id}_qc_labeled.parquet").resolve(
     strict=True
 )
 
 # operations to perform for feature selection
 feature_select_ops = [
-    "variance_threshold",
-    "correlation_threshold",
     "blocklist",
     "drop_na_columns",
+    "variance_threshold",
+    "correlation_threshold",
 ]
 
 
@@ -86,27 +86,26 @@ aggregated_df = aggregate(
 
 # Step 2: Annotation
 print("Performing annotation for", plate_id, "...")
-annotate(
+annotated_df = annotate(
     profiles=aggregated_df,
     platemap=platemap_df,
     join_on=["Metadata_well_position", "Image_Metadata_Well"],
-    output_type="parquet",
-    output_file=output_annotated_file,
 )
 
-# Load the annotated parquet file to fix metadata columns names
-annotated_df = pd.read_parquet(output_annotated_file)
+# Fix metadata column names
+annotated_df = annotated_df.rename(columns={"Image_Metadata_Site": "Metadata_Site"})
 
-# Rename columns
-annotated_df.rename(columns={"Image_Metadata_Site": "Metadata_Site"}, inplace=True)
-
-# Save annotated profiles back to parquet
-annotated_df.to_parquet(output_annotated_file, index=False)
+# Save annotated profiles
+output(
+    df=annotated_df,
+    output_filename=output_annotated_file,
+    output_type="parquet",
+)
 
 # Step 3: Normalization (mad robustize)
 # Normalize using the negative controls as the reference population
 print("Performing normalization for", plate_id, "...")
-neg_control_query = "Metadata_treatment == 'DMSO' and Metadata_cell_type == 'failing'"
+neg_control_query = "Metadata_Treatment == 'Veh'"
 normalize(
     profiles=annotated_df,
     method="mad_robustize",
@@ -158,32 +157,4 @@ normalize(
 
 print(f"Saved feature-selected profiles to {output_feature_select_file}")
 print(f"Saved spherized profiles to {output_spherized_file}")
-
-
-# In[4]:
-
-
-# Check an example output file
-test_df = pd.read_parquet(output_spherized_file)
-
-print(test_df.shape)
-print("Plate:", test_df.Metadata_Plate.unique())
-print(
-    "Metadata columns:", [col for col in test_df.columns if col.startswith("Metadata_")]
-)
-test_df.head(2)
-
-
-# In[5]:
-
-
-# Check an example output file
-test_df = pd.read_parquet(output_feature_select_file)
-
-print(test_df.shape)
-print("Plate:", test_df.Metadata_Plate.unique())
-print(
-    "Metadata columns:", [col for col in test_df.columns if col.startswith("Metadata_")]
-)
-test_df.head(2)
 

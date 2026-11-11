@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# stop the pipeline if any stage fails to avoid using stale outputs downstream
+set -eo pipefail
+
 # activate the preprocessing environment (uv)
 source ../environments/preprocessing_env/.venv/bin/activate
 

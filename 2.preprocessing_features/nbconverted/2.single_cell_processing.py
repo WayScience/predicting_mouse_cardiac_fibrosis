@@ -3,7 +3,7 @@
 
 # # Process single cell profiles
 # 
-# NOTE: We are normalizing the plates for all samples as we only have three wells associated with the healthy controls, which is insufficient for normalization.
+# NOTE: We are normalizing the single-cell profiles to all samples on the plate (MAD robustize).
 
 # ## Import libraries
 
@@ -13,8 +13,8 @@
 import pathlib
 
 import pandas as pd
-
-from pycytominer import annotate, normalize, feature_select
+from pycytominer import annotate, feature_select, normalize
+from pycytominer.cyto_utils import output
 
 
 # ## Set paths and variables
@@ -23,7 +23,7 @@ from pycytominer import annotate, normalize, feature_select
 
 
 # Set the plate to process
-plate_id = "CARD-CelIns-CX7_260803130001"
+plate_id = "CARD-CelIns-CX7_261022150001"
 
 # Directory with QC-labeled profiles
 qc_labeled_dir = pathlib.Path("./data/qc_labeled_profiles/").resolve(strict=True)
@@ -32,22 +32,22 @@ qc_labeled_dir = pathlib.Path("./data/qc_labeled_profiles/").resolve(strict=True
 output_dir = pathlib.Path("./data/single_cell_profiles/")
 output_dir.mkdir(parents=True, exist_ok=True)
 
-# Path to the platemap for the validation plate
+# Path to the platemap for the pilot plate
 platemap_path = pathlib.Path(
-    "../metadata/platemaps/platemap_validation.csv"
+    "../metadata/platemaps/pilot_platemap.csv"
 ).resolve(strict=True)
 
-# Path to the QC-labeled profile for the validation plate
+# Path to the QC-labeled profile for the pilot plate
 profile_path = (qc_labeled_dir / f"{plate_id}_qc_labeled.parquet").resolve(
     strict=True
 )
 
 # operations to perform for feature selection
 feature_select_ops = [
-    "variance_threshold",
-    "correlation_threshold",
     "blocklist",
     "drop_na_columns",
+    "variance_threshold",
+    "correlation_threshold",
 ]
 
 
@@ -74,27 +74,26 @@ if cqc_columns:
 
 print("Performing annotation for", plate_id, "...")
 # Step 1: Annotation
-annotate(
+annotated_df = annotate(
     profiles=profile_df,
     platemap=platemap_df,
     join_on=["Metadata_well_position", "Image_Metadata_Well"],
-    output_file=output_annotated_file,
-    output_type="parquet",
 )
 
-# Load the annotated parquet file to fix metadata columns names
-annotated_df = pd.read_parquet(output_annotated_file)
+# Fix metadata column names
+annotated_df = annotated_df.rename(columns={"Image_Metadata_Site": "Metadata_Site"})
 
-# Rename columns
-annotated_df.rename(columns={"Image_Metadata_Site": "Metadata_Site"}, inplace=True)
-
-# Save back
-annotated_df.to_parquet(output_annotated_file, index=False)
+# Save annotated profiles
+output(
+    df=annotated_df,
+    output_filename=output_annotated_file,
+    output_type="parquet",
+)
 
 # Step 2: Normalization
 normalized_df = normalize(
     profiles=output_annotated_file,
-    method="standardize",
+    method="mad_robustize",
     output_file=output_normalized_file,
     output_type="parquet",
     samples="all",
@@ -112,32 +111,4 @@ feature_select(
 )
 
 print(f"Annotation, normalization, and feature selection complete for {plate_id}")
-
-
-# In[4]:
-
-
-# Check output file
-test_df = pd.read_parquet(output_feature_select_file)
-
-print(test_df.shape)
-print("Plate:", test_df.Metadata_Plate.unique())
-print(
-    "Metadata columns:", [col for col in test_df.columns if col.startswith("Metadata_")]
-)
-test_df.head(2)
-
-
-# In[5]:
-
-
-# Check output file
-test_df = pd.read_parquet(output_annotated_file)
-
-print(test_df.shape)
-print("Plate:", test_df.Metadata_Plate.unique())
-print(
-    "Metadata columns:", [col for col in test_df.columns if col.startswith("Metadata_")]
-)
-test_df.head(2)
 

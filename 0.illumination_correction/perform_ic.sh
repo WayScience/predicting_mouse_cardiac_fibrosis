@@ -1,7 +1,10 @@
 #!/bin/bash
 
-# initialize the correct shell for your machine to allow conda to work (see README for note on shell names)
-conda init bash
+# stop the workflow if any step fails to avoid running CellProfiler on stale inputs
+set -eo pipefail
+
+# enable conda activate within this script
+eval "$(conda shell.bash hook)"
 # activate the CellProfiler environment
 conda activate mouse_fibrosis_cp_env
 

@@ -36,6 +36,11 @@ The notebook [2.single_cell_processing.ipynb](./2.single_cell_processing.ipynb) 
 
 The single-cell profiles are saved in `data/single_cell_profiles`.
 
+> [!NOTE]
+> We use an updated [blocklist](./blocklist_features.txt) instead of the default pycytominer blocklist.
+> The default blocklist uses the standard Cell Painting channel names (`AGP`, `DNA`, `ER`, `Mito`, and `RNA`), but our channels are named `Actin`, `DNA`, `ER`, `Golgi`, and `Mito`.
+> Our blocklist contains the same nuclei features as the default (`Correlation_Manders`, `Correlation_RWC`, and `Granularity_14` to `Granularity_16`), renamed to match our channels.
+
 ## Bulk profiles
 
 The notebook [3.bulk_processing.ipynb](./3.bulk_processing.ipynb) uses pycytominer to create well-level profiles from the single cells that passed QC:
@@ -53,10 +58,11 @@ The bulk profiles are saved in `data/bulk_profiles`.
 To run all of the notebooks in order, run the bash script [preprocess_features.sh](./preprocess_features.sh) using the command below:
 
 ```bash
-source preprocess_features.sh
+bash preprocess_features.sh
 ```
 
 This script activates the preprocessing environment (uv), converts the notebooks to Python scripts in the [nbconverted](./nbconverted/) folder, and runs them in order.
+If any stage fails, the script stops and exits with an error so later stages do not run on stale outputs.
 
 > [!NOTE]
 > The `data` folder is not tracked on GitHub because the profiles are too large.

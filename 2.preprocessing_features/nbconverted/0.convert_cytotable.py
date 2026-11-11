@@ -8,14 +8,15 @@
 # In[1]:
 
 
+import logging
 import pathlib
-import pandas as pd
 import pprint
+
+import pandas as pd
+import pyarrow.parquet as pq
 
 # cytotable will merge objects from SQLite file into single cells and save as parquet file
 from cytotable import convert, presets
-
-import logging
 
 # Set the logging level to a higher level to avoid outputting unnecessary errors from config file in convert function
 logging.getLogger().setLevel(logging.ERROR)
@@ -33,6 +34,12 @@ base_dir = pathlib.Path("../1.cellprofiler_processing/cp_output/").resolve(stric
 plate_names = [
     p.name for p in base_dir.glob("CARD*") if p.is_dir() and list(p.glob("*.sqlite"))
 ]
+
+# stop if no plates were found to avoid misleading success messages downstream
+if not plate_names:
+    raise FileNotFoundError(
+        f"No plate folders with a CellProfiler SQLite file were found in {base_dir}"
+    )
 
 print(f"There are a total of {len(plate_names)} plate(s) to convert:")
 for plate in plate_names:
@@ -79,39 +86,30 @@ plate_info_dictionary = {
 # view the dictionary to assess that all info is added correctly
 pprint.pprint(plate_info_dictionary, indent=4)
 
-converted_profiles_exist = bool(plate_info_dictionary) and all(
-    info["path_to_output"].is_file() for info in plate_info_dictionary.values()
-)
-
-if converted_profiles_exist:
-    print(
-        "Converted profiles already exist for all plates. Conversion cells will be skipped."
-    )
-
 
 # ## Convert SQLite to parquet files
 
 # In[4]:
 
 
-if converted_profiles_exist:
-    print(
-        "Skipping SQLite to parquet conversion because converted profiles already exist."
-    )
-else:
-    for plate_name, info in plate_info_dictionary.items():
-        print("Starting conversion with cytotable for plate:", plate_name)
-        # Merge single cells and output as parquet file
-        convert(
-            source_path=str(info["path_to_sqlite"]),
-            dest_path=str(info["path_to_output"]),
-            dest_datatype=dest_datatype,
-            preset=preset,
-            joins=joins,
-            chunk_size=5000,
-        )
+for plate_name, info in plate_info_dictionary.items():
+    # Skip plates that are already converted (CytoTable will not overwrite an existing file)
+    if info["path_to_output"].is_file():
+        print(f"Skipping conversion for plate {plate_name} as converted profile exists")
+        continue
 
-    print("All plates have been converted with cytotable!")
+    print("Starting conversion with cytotable for plate:", plate_name)
+    # Merge single cells and output as parquet file
+    convert(
+        source_path=str(info["path_to_sqlite"]),
+        dest_path=str(info["path_to_output"]),
+        dest_datatype=dest_datatype,
+        preset=preset,
+        joins=joins,
+        chunk_size=5000,
+    )
+
+print("All plates have been converted with cytotable!")
 
 
 # # Load in converted profiles to update
@@ -121,49 +119,51 @@ else:
 # In[5]:
 
 
-if converted_profiles_exist:
-    print("Skipping metadata updates because converted profiles already exist.")
-else:
-    # List of columns to update with the "Metadata_" prefix
-    metadata_columns_to_update = [
-        "Nuclei_Location_Center_X",
-        "Nuclei_Location_Center_Y",
-        "Cells_Location_Center_X",
-        "Cells_Location_Center_Y",
-        "Image_Count_Cells",
-    ]
+# List of columns to update with the "Metadata_" prefix
+metadata_columns_to_update = [
+    "Nuclei_Location_Center_X",
+    "Nuclei_Location_Center_Y",
+    "Cells_Location_Center_X",
+    "Cells_Location_Center_Y",
+    "Image_Count_Cells",
+]
 
-    for plate_name, info in plate_info_dictionary.items():
-        file_path = info["path_to_output"]
-        if not file_path.is_file():
-            print(f"Warning: file not found for plate {plate_name}")
-            continue
+for plate_name, info in plate_info_dictionary.items():
+    file_path = info["path_to_output"]
+    if not file_path.is_file():
+        print(f"Warning: file not found for plate {plate_name}")
+        continue
 
-        # Load the DataFrame from the Parquet file
-        df = pd.read_parquet(file_path)
+    # Skip plates that already have the metadata updates (columns already prefixed)
+    if "Metadata_Image_Count_Cells" in pq.read_schema(file_path).names:
+        print(f"Skipping metadata updates for plate {plate_name} as already processed")
+        continue
 
-        # Ensure Metadata_Plate contains only one unique value (occurs due to failure acquiring plate during run)
-        if "Metadata_Plate" in df.columns and df["Metadata_Plate"].nunique() != 1:
-            df["Metadata_Plate"] = plate_name
+    # Load the DataFrame from the Parquet file
+    df = pd.read_parquet(file_path)
 
-        # Drop rows where "Metadata_ImageNumber" is NaN
-        df = df.dropna(subset=["Metadata_ImageNumber"])
+    # Ensure Metadata_Plate contains only one unique value (occurs due to failure acquiring plate during run)
+    if "Metadata_Plate" in df.columns and df["Metadata_Plate"].nunique() != 1:
+        df["Metadata_Plate"] = plate_name
 
-        # Rearrange columns and add "Metadata_" prefix
-        df = df[
-            metadata_columns_to_update
-            + [col for col in df.columns if col not in metadata_columns_to_update]
-        ].rename(
-            columns=lambda col: (
-                "Metadata_" + col if col in metadata_columns_to_update else col
-            )
+    # Drop rows where "Metadata_ImageNumber" is NaN
+    df = df.dropna(subset=["Metadata_ImageNumber"])
+
+    # Rearrange columns and add "Metadata_" prefix
+    df = df[
+        metadata_columns_to_update
+        + [col for col in df.columns if col not in metadata_columns_to_update]
+    ].rename(
+        columns=lambda col: (
+            "Metadata_" + col if col in metadata_columns_to_update else col
         )
+    )
 
-        # Save the processed DataFrame back to the same path
-        df.to_parquet(file_path, index=False)
-        print(f"Processed metadata columns for plate: {plate_name}")
+    # Save the processed DataFrame back to the same path
+    df.to_parquet(file_path, index=False)
+    print(f"Processed metadata columns for plate: {plate_name}")
 
-    print("All converted profiles have been updated with Metadata columns!")
+print("All converted profiles have been updated with Metadata columns!")
 
 
 # ## Check output to confirm process worked

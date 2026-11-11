@@ -38,13 +38,17 @@ run_name = "illum_correction"
 output_dir = pathlib.Path("./illum_directory")
 output_dir.mkdir(exist_ok=True)
 
-# set base directory for where the images are located (WILL NEED TO CHANGE ON YOUR LOCAL MACHINE)
-base_dir = pathlib.Path(
-    "/home/jenna/mnt/Way_McKinsey_Cardiac_Fibrosis/SPLAT_data/SPLAT_Run_10.23.26/"
-).resolve(strict=True)
+# set path to loaddata csv files
+loaddata_dir = pathlib.Path("./loaddata_csvs").resolve(strict=True)
 
-# list for plate names based on folders found in the base directory
-plate_names = sorted(folder.name for folder in base_dir.iterdir() if folder.is_dir())
+# list plate names based on the LoadData CSVs created in the previous notebook
+plate_names = sorted(
+    csv.stem[len("loaddata_") :] for csv in loaddata_dir.glob("loaddata_*.csv")
+)
+
+# stop if no LoadData CSVs were found to avoid running CellProfiler on nothing
+if not plate_names:
+    raise FileNotFoundError(f"No LoadData CSVs were found in {loaddata_dir}")
 
 print("Found", len(plate_names), "plates:")
 for plate in plate_names:
@@ -59,15 +63,10 @@ for plate in plate_names:
 # set path to the illum pipeline
 path_to_pipeline = pathlib.Path("./pipeline/illum.cppipe").resolve(strict=True)
 
-# set path to loaddata csv files
-loaddata_dir = pathlib.Path("./loaddata_csvs").resolve(strict=True)
-
 # create plate info dictionary with all parts of the CellProfiler CLI command to run in parallel
 plate_info_dictionary = {
     name: {
-        "path_to_loaddata": list(loaddata_dir.rglob(f"loaddata_{name}.csv"))[0].resolve(
-            strict=True
-        ),
+        "path_to_loaddata": loaddata_dir / f"loaddata_{name}.csv",
         "path_to_output": pathlib.Path(f"{output_dir}/{name}/"),
         "path_to_pipeline": path_to_pipeline,
     }

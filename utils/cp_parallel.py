@@ -55,6 +55,7 @@ def run_cellprofiler_parallel(
         FileNotFoundError: If required paths don't exist.
         ValueError: If group_level is invalid.
         KeyError: If plate_name is missing when group_level is "well".
+        RuntimeError: If any CellProfiler process fails (raised after all logs are written).
     """
     # Check if that group level is set properly
     if group_level not in {"plate", "well"}:
@@ -138,6 +139,9 @@ def run_cellprofiler_parallel(
     results = [future.result() for future in futures]
     print("All processes have been completed!")
 
+    # Track failed processes so all logs are written before raising an error
+    failed_runs = []
+
     # Write results to log files
     for result, (_, name, plate_name) in zip(results, commands):
         if group_level == "plate":
@@ -157,5 +161,13 @@ def run_cellprofiler_parallel(
             print("Last 10 lines of stderr:")
             print("\n".join(stderr_lines[-10:]))
             print("See log file for more details:", log_path)
+            failed_runs.append(name)
 
     print("All results have been converted to log files!")
+
+    # Raise an error if any process failed so the calling script exits with a non-zero status
+    if failed_runs:
+        raise RuntimeError(
+            f"CellProfiler failed for {len(failed_runs)} of {len(commands)} run(s): "
+            f"{', '.join(failed_runs)}. See the log files in {log_dir.resolve()} for details."
+        )

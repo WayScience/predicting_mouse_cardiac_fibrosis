@@ -14,5 +14,7 @@ The pipeline that we will be utilizing performs two tasks:
 To segment and extract features from the plate, run the bash script [perform_extraction.sh](./perform_extraction.sh) using the command below:
 
 ```bash
-source perform_extraction.sh
+bash perform_extraction.sh
 ```
+
+If any step fails, the script stops and exits with an error so CellProfiler does not run on stale LoadData CSVs.

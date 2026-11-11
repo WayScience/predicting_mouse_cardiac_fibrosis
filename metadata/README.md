@@ -19,4 +19,8 @@ The [pilot_platemap.csv](./platemaps/pilot_platemap.csv) file has one row per we
 The notebook [platemap_vis.ipynb](./platemap_vis.ipynb) uses R (ggplot2 and platetools) to plot the plate map as a 96-well plate, where well color shows the treatment and the label in each well is the biological replicate ID.
 The figure is saved to the [platemap_fig](./platemap_fig/) folder.
 
+![pilot_platemap](./platemap_fig/pilot_platemap_figure.png)
+
+> Plate map layout for the pilot plate. Well color shows the treatment and the label in the well is the biological replicate (mouse) ID.
+
 To generate the figure, run the notebook using the R environment (`mouse_r_fibrosis_env`).

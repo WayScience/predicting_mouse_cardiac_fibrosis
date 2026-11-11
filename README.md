@@ -40,6 +40,12 @@ Python environments are managed with [uv](https://docs.astral.sh/uv/), while the
 3. [Preprocessing environment](./environments/preprocessing_env/) (uv): This environment installs preprocessing softwares (pycytominer, CytoTable, coSMicQC) to format the morphological readouts as single-cell profiles.
 4. [Machine learning environment](./environments/machine_learning_env/) (uv): This environment is used for training and evaluating machine learning models.
 
+> [!NOTE]
+> We keep the CellProfiler and R environments in conda/mamba instead of moving them to uv.
+> uv only manages Python packages, so it cannot install R or R packages.
+> CellProfiler relies on system libraries outside of Python (Java, GTK, and MySQL) and pinned older package versions that conda installs reliably.
+> Keeping both in conda means they work as is and can also be used on HPC systems.
+
 To install the conda environments, run the following from the root of this repository:
 
 ```bash

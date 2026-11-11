@@ -21,6 +21,8 @@
 import sys
 from pathlib import Path
 
+from IPython.display import display
+
 sys.path.append("../utils")
 import loaddata_csv
 
