@@ -36,12 +36,15 @@ runinfo*
 # Ignore macOS Finder metadata files
 .DS_Store
 
-# Ignore model files/folders as though are downloaded in the notebook
-label_encoder*
-models*
-
 # Ignore datasplit folders which is a lot of files
 **/datasplits/*
+
+# Ignore machine learning data splits since they are copies of the single-cell profiles (too large for GitHub)
+3.machine_learning/data_splits*
+
+# Ignore single-cell crop images and the montage PNG (too large for GitHub); the montage PDF and selected cells CSV are tracked
+3.machine_learning/sc_crops/*.png
+3.machine_learning/figures/sc_crop_montage/*.png
 
 # Ignore uv virtual environments
 .venv*
