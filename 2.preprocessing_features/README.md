@@ -30,9 +30,9 @@ Figures showing the QC thresholds are saved in the [qc_figures](./qc_figures/) f
 
 The notebook [2.single_cell_processing.ipynb](./2.single_cell_processing.ipynb) uses [pycytominer](https://github.com/cytomining/pycytominer) to process the single cells that passed QC:
 
-1. **Annotate:** Add the plate map metadata (treatment and biological replicate) to each single cell.
+1. **Annotate:** Add the plate map metadata (treatment and biological replicate) to each single cell, and add the `Metadata_` prefix to the site and image file/path name columns so they are not treated as features.
 2. **Normalize:** Normalize the features to all single cells on the plate (`mad_robustize`).
-3. **Feature selection:** Remove features that are in the [blocklist](./blocklist_features.txt), have any missing values, have low variance, or are highly correlated.
+3. **Feature selection:** Remove features that are in the [blocklist](./blocklist_features.txt), have any missing values, have low variance, are dominated by one value (frequency threshold), or are highly correlated.
 
 The single-cell profiles are saved in `data/single_cell_profiles`.
 
@@ -41,6 +41,12 @@ The single-cell profiles are saved in `data/single_cell_profiles`.
 > The default blocklist uses the standard Cell Painting channel names (`AGP`, `DNA`, `ER`, `Mito`, and `RNA`), but our channels are named `Actin`, `DNA`, `ER`, `Golgi`, and `Mito`.
 > Our blocklist contains the same nuclei features as the default (`Correlation_Manders`, `Correlation_RWC`, and `Granularity_14` to `Granularity_16`), renamed to match our channels.
 
+> [!IMPORTANT]
+> We include the `frequency_threshold` operation in feature selection.
+> In older pycytominer versions (e.g., 1.3.1), `variance_threshold` removed features dominated by one value (e.g., Euler number, which is the same for 97% of cells).
+> In newer versions (e.g., 1.7.1, used here), `variance_threshold` only removes features with low raw variance, and the old behavior moved to `frequency_threshold`.
+> Without it, features that are mostly one value pass feature selection with extreme values (~10^18) after `mad_robustize` (their MAD is 0), which breaks model training.
+
 ## Bulk profiles
 
 The notebook [3.bulk_processing.ipynb](./3.bulk_processing.ipynb) uses pycytominer to create well-level profiles from the single cells that passed QC:
@@ -48,7 +54,7 @@ The notebook [3.bulk_processing.ipynb](./3.bulk_processing.ipynb) uses pycytomin
 1. **Aggregate:** Take the median of each feature per well.
 2. **Annotate:** Add the plate map metadata to each well.
 3. **Normalize:** Normalize the features to the vehicle-treated wells (negative controls) (`mad_robustize`).
-4. **Feature selection:** Remove features that are in the blocklist, have any missing values, have low variance, or are highly correlated (> 0.95), then remove features with low variance within the vehicle-treated wells.
+4. **Feature selection:** Remove features that are in the blocklist, have any missing values, have low variance, are dominated by one value, or are highly correlated (> 0.95), then remove features with low variance or dominated by one value within the vehicle-treated wells.
 5. **Spherize:** Whiten the profiles using the vehicle-treated wells as the reference (`ZCA-cor`).
 
 The bulk profiles are saved in `data/bulk_profiles`.

@@ -43,10 +43,13 @@ profile_path = (qc_labeled_dir / f"{plate_id}_qc_labeled.parquet").resolve(
 )
 
 # operations to perform for feature selection
+# frequency_threshold removes features dominated by one value (in newer pycytominer versions, e.g., 1.7.1,
+# variance_threshold only removes features with low raw variance)
 feature_select_ops = [
     "blocklist",
     "drop_na_columns",
     "variance_threshold",
+    "frequency_threshold",
     "correlation_threshold",
 ]
 
@@ -80,8 +83,16 @@ annotated_df = annotate(
     join_on=["Metadata_well_position", "Image_Metadata_Well"],
 )
 
-# Fix metadata column names
+# Fix metadata column names (add Metadata_ prefix to site and image file/path name columns
+# so they are not treated as features downstream)
 annotated_df = annotated_df.rename(columns={"Image_Metadata_Site": "Metadata_Site"})
+annotated_df = annotated_df.rename(
+    columns={
+        col: f"Metadata_{col}"
+        for col in annotated_df.columns
+        if col.startswith(("Image_FileName_", "Image_PathName_"))
+    }
+)
 
 # Save annotated profiles
 output(
