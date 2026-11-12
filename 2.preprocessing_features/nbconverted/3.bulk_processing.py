@@ -43,10 +43,13 @@ profile_path = (qc_labeled_dir / f"{plate_id}_qc_labeled.parquet").resolve(
 )
 
 # operations to perform for feature selection
+# frequency_threshold removes features dominated by one value (in newer pycytominer versions, e.g., 1.7.1,
+# variance_threshold only removes features with low raw variance)
 feature_select_ops = [
     "blocklist",
     "drop_na_columns",
     "variance_threshold",
+    "frequency_threshold",
     "correlation_threshold",
 ]
 
@@ -135,7 +138,7 @@ print(
 )
 zero_negcon_var_fs_df = feature_select(
     profiles=feature_select_df,
-    operation="variance_threshold",
+    operation=["variance_threshold", "frequency_threshold"],
     freq_cut=0.05,
     unique_cut=0.01,
     samples=neg_control_query,
