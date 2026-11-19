@@ -29,6 +29,7 @@ For this dataset, the Cell Painting staining swaps the cytoplasmic RNA/nucleoli 
 | [0.illumination_correction](./0.illumination_correction/) | Whole image QC & illumination correction | Remove over-saturated image sets and calculate illumination correction functions per channel using CellProfiler. |
 | [1.cellprofiler_processing](./1.cellprofiler_processing/) | Segmentation & feature extraction | Apply illumination correction, segment nuclei, cells, and cytoplasm, and extract morphology features using CellProfiler. |
 | [2.preprocessing_features](./2.preprocessing_features/) | Image-based profiling | Convert CellProfiler outputs to parquet with CytoTable, flag poor-quality segmentations with coSMicQC, and generate normalized, feature-selected single-cell and well-level (bulk) profiles with pycytominer. |
+| [3.machine_learning](./3.machine_learning/) | Machine learning | Train a binary logistic regression to predict TGF-β versus vehicle treated single cells, holding out one biological replicate and one random well per remaining replicate, then extract and plot model performance and top features (coefficients), and generate a single-cell crop montage of top predicted cells. |
 
 ## Environments
 
