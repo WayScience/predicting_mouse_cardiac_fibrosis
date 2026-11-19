@@ -214,6 +214,5 @@ options(repr.plot.width = width, repr.plot.height = height)
 split_platemap_gg <- platemap_gg / bar_gg + plot_layout(heights = c(2.2, 1))
 
 ggsave(file.path(output_fig_dir, "data_split_platemap.png"), split_platemap_gg, dpi = 500, width = width, height = height, bg = "white")
-ggsave(file.path(output_fig_dir, "data_split_platemap.pdf"), split_platemap_gg, width = width, height = height, bg = "white")
 
 split_platemap_gg
